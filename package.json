@@ -1,0 +1,22 @@
+{
+  "name": "eye20-20-20",
+  "version": "1.0.0",
+  "description": "20-20-20 护眼助手 - 桌面版",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.15.2"
+  },
+  "build": {
+    "appId": "com.eye202020.app",
+    "productName": "20-20-20护眼助手",
+    "win": {
+      "target": "portable"
+    },
+    "icon": null
+  }
+}

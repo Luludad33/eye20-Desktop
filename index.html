@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>20-20-20 护眼助手</title>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --text: #1a202c;
+    --text-secondary: #718096;
+    --border: #e2e8f0;
+    --ring-bg: #e2e8f0;
+  }
+  .dark {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --text: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --border: #334155;
+    --ring-bg: #334155;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    transition: background .3s, color .3s;
+    user-select: none;
+  }
+  .app {
+    background: var(--card);
+    border-radius: 24px;
+    padding: 40px 48px;
+    width: 400px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.08);
+    transition: background .3s;
+    position: relative;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .header h1 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .theme-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text-secondary);
+    transition: .2s;
+  }
+  .theme-btn:hover { border-color: var(--text-secondary); }
+  .timer-wrap {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    margin: 0 auto 20px;
+  }
+  .timer-wrap svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  .timer-wrap .ring-bg { fill: none; stroke: var(--ring-bg); stroke-width: 6; }
+  .timer-wrap .ring-fg {
+    fill: none;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset .3s ease, stroke .5s;
+  }
+  .ring-fg.work { stroke: #3b82f6; }
+  .ring-fg.rest { stroke: #10b981; }
+  .timer-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .timer-display {
+    font-size: 56px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+  .timer-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+  }
+  .progress-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .btn {
+    border: none;
+    border-radius: 12px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: .2s;
+    background: var(--border);
+    color: var(--text);
+  }
+  .btn:hover { opacity: .8; }
+  .btn-primary {
+    background: #3b82f6;
+    color: #fff;
+    min-width: 100px;
+  }
+  .btn-primary.resting { background: #10b981; }
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .stat-item { text-align: center; }
+  .stat-num {
+    font-size: 22px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-num.work { color: #3b82f6; }
+  .stat-num.rest { color: #10b981; }
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+  .settings-toggle {
+    text-align: center;
+  }
+  .settings-toggle button {
+    background: none;
+    border: none;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .settings-toggle button:hover { color: var(--text); }
+  .settings-panel {
+    display: none;
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+    transition: background .3s;
+  }
+  .settings-panel.open { display: block; }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .settings-row:last-child { margin-bottom: 0; }
+  .settings-row label { font-size: 13px; color: var(--text-secondary); }
+  .settings-row input {
+    width: 80px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    text-align: center;
+    background: var(--card);
+    color: var(--text);
+  }
+  .settings-row input:focus { outline: none; border-color: #3b82f6; }
+
+  /* --- rest overlay --- */
+  .rest-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(16, 185, 129, 0.95);
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    animation: overlayIn .3s ease;
+  }
+  .rest-overlay.show { display: flex; }
+  .dark .rest-overlay { background: rgba(5, 46, 22, 0.97); }
+  .rest-overlay .big-icon { font-size: 80px; margin-bottom: 16px; }
+  .rest-overlay .big-text { font-size: 48px; font-weight: 700; color: #fff; }
+  .rest-overlay .big-sub {
+    font-size: 20px;
+    color: rgba(255,255,255,.8);
+    margin-top: 12px;
+  }
+  .rest-overlay .big-timer {
+    font-size: 96px;
+    font-weight: 700;
+    color: #fff;
+    margin-top: 20px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 4px;
+  }
+  .rest-overlay .skip-overlay-btn {
+    margin-top: 32px;
+    padding: 12px 40px;
+    border: 2px solid rgba(255,255,255,.6);
+    border-radius: 12px;
+    background: transparent;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: .2s;
+  }
+  .rest-overlay .skip-overlay-btn:hover {
+    background: rgba(255,255,255,.15);
+    border-color: #fff;
+  }
+  @keyframes overlayIn { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  .rest-overlay .big-timer { animation: pulse 1s ease-in-out infinite; }
+  @keyframes flashBg {
+    0%, 100% { background: var(--bg); }
+    50% { background: rgba(16, 185, 129, .3); }
+  }
+  body.screen-flash { animation: flashBg .6s ease 3; }
+
+  @media (max-width: 440px) {
+    .app { width: 100%; border-radius: 0; padding: 24px 20px; }
+    .timer-wrap { width: 220px; height: 220px; }
+    .timer-display { font-size: 44px; }
+    .stats { gap: 20px; }
+    .rest-overlay .big-timer { font-size: 64px; }
+    .rest-overlay .big-text { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <div class="header">
+    <h1>👁 20-20-20 护眼</h1>
+    <button class="theme-btn" id="themeBtn" title="切换主题">🌙</button>
+  </div>
+
+  <div class="timer-wrap">
+    <svg viewBox="0 0 100 100">
+      <circle class="ring-bg" cx="50" cy="50" r="44"/>
+      <circle class="ring-fg work" id="ring" cx="50" cy="50" r="44"
+        stroke-dasharray="276.46" stroke-dashoffset="0"/>
+    </svg>
+    <div class="timer-center">
+      <div class="timer-display" id="timerDisplay">20:00</div>
+      <div class="timer-label" id="phaseLabel">准备开始</div>
+      <div class="progress-text" id="progressText">第 0 轮</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="mainBtn">开始</button>
+    <button class="btn btn-secondary" id="resetBtn">重置</button>
+    <button class="btn btn-secondary" id="skipBtn">跳过休息</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat-item">
+      <div class="stat-num work" id="cycleCount">0</div>
+      <div class="stat-label">完成轮数</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num rest" id="restSecTotal">0</div>
+      <div class="stat-label">累计护眼(秒)</div>
+    </div>
+  </div>
+
+  <div class="settings-toggle">
+    <button id="settingsToggle">⚙ 设置</button>
+  </div>
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-row">
+      <label>工作时长（分钟）</label>
+      <input type="number" id="workMin" min="1" max="120" value="20">
+    </div>
+    <div class="settings-row">
+      <label>休息时长（秒）</label>
+      <input type="number" id="restSec" min="5" max="300" value="20">
+    </div>
+    <div class="settings-row">
+      <label>自动循环轮数</label>
+      <input type="number" id="maxCyclesInput" min="1" max="99" value="3">
+    </div>
+  </div>
+</div>
+
+<!-- rest overlay -->
+<div class="rest-overlay" id="restOverlay">
+  <div class="big-icon">🌿</div>
+  <div class="big-text">该休息了！</div>
+  <div class="big-sub">看看 20 英尺（约 6 米）外的远处</div>
+  <div class="big-timer" id="overlayTimer">20</div>
+  <div class="big-sub">放松眼睛</div>
+  <button class="skip-overlay-btn" id="skipOverlayBtn">跳过休息 →</button>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // --- state ---
+  const STATE = { IDLE: 0, WORK: 1, REST: 2 };
+  let state = STATE.IDLE;
+  let timeLeft = 20 * 60;
+  let totalTime = 20 * 60;
+  let timerId = null;
+  let todayCycles = 0;
+  let todayRestSec = 0;
+  let workMinutes = 20;
+  let restSeconds = 20;
+  let darkMode = false;
+  let maxCycles = 3;
+  let sessionCycles = 0;
+
+  // --- DOM refs ---
+  const $ = id => document.getElementById(id);
+  const timerDisplay = $('timerDisplay');
+  const phaseLabel = $('phaseLabel');
+  const progressText = $('progressText');
+  const mainBtn = $('mainBtn');
+  const resetBtn = $('resetBtn');
+  const skipBtn = $('skipBtn');
+  const ring = $('ring');
+  const cycleCount = $('cycleCount');
+  const restSecTotal = $('restSecTotal');
+  const themeBtn = $('themeBtn');
+  const settingsToggle = $('settingsToggle');
+  const settingsPanel = $('settingsPanel');
+  const workMinInput = $('workMin');
+  const restSecInput = $('restSec');
+  const maxCyclesInput = $('maxCyclesInput');
+  const restOverlay = $('restOverlay');
+  const overlayTimer = $('overlayTimer');
+  const skipOverlayBtn = $('skipOverlayBtn');
+
+  const CIRCUMFERENCE = 2 * Math.PI * 44;
+
+  // --- audio ---
+  let audioCtx = null;
+  let alarmInterval = null;
+
+  function resumeAudio() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (_) {}
+  }
+
+  function sirenBlast() {
+    resumeAudio();
+    try {
+      if (!audioCtx) return;
+      // square wave, alternating high/low frequency — siren-like
+      for (let cycle = 0; cycle < 4; cycle++) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'square';
+        osc.frequency.value = cycle % 2 === 0 ? 880 : 660;
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime + cycle * 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + cycle * 0.15 + 0.14);
+        osc.start(audioCtx.currentTime + cycle * 0.15);
+        osc.stop(audioCtx.currentTime + cycle * 0.15 + 0.14);
+      }
+    } catch (_) {}
+  }
+
+  function startAlarm() {
+    stopAlarm();
+    sirenBlast();
+    alarmInterval = setInterval(sirenBlast, 2500);
+  }
+
+  function stopAlarm() {
+    clearInterval(alarmInterval);
+    alarmInterval = null;
+  }
+
+  function playRestDone() {
+    resumeAudio();
+    try {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = 660;
+      osc.frequency.linearRampToValueAtTime(880, audioCtx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.25);
+    } catch (_) {}
+  }
+
+  // --- notification ---
+  function sendNotification(title, body) {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+      new Notification(title, { body, icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E👁%3C/text%3E%3C/svg%3E" });
+    } else if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }
+
+  // --- vibration ---
+  function vibrate(pattern) {
+    try { navigator.vibrate && navigator.vibrate(pattern); } catch (_) {}
+  }
+
+  // --- screen flash ---
+  let flashBgTimer = null;
+  function triggerScreenFlash() {
+    document.body.classList.add('screen-flash');
+    clearTimeout(flashBgTimer);
+    flashBgTimer = setTimeout(() => document.body.classList.remove('screen-flash'), 2000);
+  }
+
+  // --- overlay ---
+  function showOverlay() {
+    restOverlay.classList.add('show');
+  }
+  function hideOverlay() {
+    restOverlay.classList.remove('show');
+  }
+
+  // --- title flash ---
+  let titleTimer = null;
+  const origTitle = document.title;
+  function flashTitle(msg) {
+    clearInterval(titleTimer);
+    let show = true;
+    titleTimer = setInterval(() => {
+      document.title = show ? msg : origTitle;
+      show = !show;
+    }, 500);
+  }
+  function clearFlash() {
+    clearInterval(titleTimer);
+    titleTimer = null;
+    document.title = origTitle;
+  }
+
+  // --- ring ---
+  function updateRing(fraction) {
+    const offset = CIRCUMFERENCE * (1 - Math.min(Math.max(fraction, 0), 1));
+    ring.style.strokeDashoffset = offset;
+  }
+
+  // --- display ---
+  function fmtTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  function updateDisplay() {
+    timerDisplay.textContent = fmtTime(timeLeft);
+    const fraction = totalTime > 0 ? timeLeft / totalTime : 0;
+    updateRing(fraction);
+
+    if (state === STATE.IDLE) {
+      if (sessionCycles >= maxCycles && sessionCycles > 0) {
+        phaseLabel.textContent = '✅ 今日护眼完成';
+        progressText.textContent = `已完成 ${maxCycles} 轮，点击「开始」开启新会话`;
+      } else {
+        phaseLabel.textContent = '准备开始';
+        progressText.textContent = `今日完成 ${todayCycles} 轮`;
+      }
+    } else if (state === STATE.WORK) {
+      phaseLabel.textContent = '👀 专注工作中';
+      progressText.textContent = `第 ${todayCycles + 1}/${maxCycles} 轮工作`;
+    } else {
+      phaseLabel.textContent = '🌿 远眺休息中';
+      progressText.textContent = `剩余 ${timeLeft} 秒`;
+    }
+  }
+
+  // --- stats ---
+  function updateStats() {
+    cycleCount.textContent = todayCycles;
+    restSecTotal.textContent = todayRestSec;
+  }
+
+  // --- load / save ---
+  function loadSettings() {
+    try {
+      const s = localStorage.getItem('eye20_settings');
+      if (s) {
+        const d = JSON.parse(s);
+        workMinutes = d.wm ?? 20;
+        restSeconds = d.rs ?? 20;
+        maxCycles = d.mc ?? 3;
+        darkMode = d.dark ?? false;
+      }
+    } catch (_) {}
+    const savedCycles = localStorage.getItem('eye20_cycles');
+    const savedRest = localStorage.getItem('eye20_restSec');
+    const savedDate = localStorage.getItem('eye20_date');
+    const today = new Date().toDateString();
+    if (savedDate === today) {
+      todayCycles = parseInt(savedCycles, 10) || 0;
+      todayRestSec = parseInt(savedRest, 10) || 0;
+    } else {
+      todayCycles = 0;
+      todayRestSec = 0;
+    }
+    workMinInput.value = workMinutes;
+    restSecInput.value = restSeconds;
+    maxCyclesInput.value = maxCycles;
+    if (darkMode) document.documentElement.classList.add('dark');
+    themeBtn.textContent = darkMode ? '☀️' : '🌙';
+  }
+  function saveSettings() {
+    localStorage.setItem('eye20_settings', JSON.stringify({ wm: workMinutes, rs: restSeconds, mc: maxCycles, dark: darkMode }));
+  }
+  function saveStats() {
+    localStorage.setItem('eye20_cycles', String(todayCycles));
+    localStorage.setItem('eye20_restSec', String(todayRestSec));
+    localStorage.setItem('eye20_date', new Date().toDateString());
+  }
+
+  // --- timer core (wall-clock based) ---
+  let tickStart = null;
+
+  function resetPhase(phase) {
+    clearInterval(timerId);
+    timerId = null;
+    tickStart = null;
+    state = phase;
+    if (phase === STATE.WORK || phase === STATE.IDLE) {
+      totalTime = workMinutes * 60;
+      timeLeft = totalTime;
+      ring.setAttribute('class', 'ring-fg work');
+      mainBtn.className = phase === STATE.IDLE ? 'btn btn-primary' : 'btn btn-primary';
+    } else {
+      totalTime = restSeconds;
+      timeLeft = totalTime;
+      ring.setAttribute('class', 'ring-fg rest');
+      mainBtn.className = 'btn btn-primary resting';
+    }
+    if (phase === STATE.IDLE) {
+      stopAlarm();
+      mainBtn.textContent = '开始';
+      clearFlash();
+      hideOverlay();
+    } else {
+      mainBtn.textContent = '暂停';
+    }
+    updateDisplay();
+    updateStats();
+    saveStats();
+  }
+
+  function tick() {
+    const elapsed = Math.floor((Date.now() - tickStart) / 1000);
+    const newTimeLeft = Math.max(totalTime - elapsed, 0);
+    if (newTimeLeft !== timeLeft) {
+      timeLeft = newTimeLeft;
+      updateDisplay();
+      // update overlay timer during rest
+      if (state === STATE.REST) {
+        overlayTimer.textContent = timeLeft;
+      }
+    }
+    if (timeLeft <= 0) {
+      clearInterval(timerId);
+      timerId = null;
+      tickStart = null;
+      if (state === STATE.WORK) {
+        todayCycles += 1;
+        sessionCycles += 1;
+        todayRestSec += restSeconds;
+        saveStats();
+        startAlarm();
+        vibrate([100, 50, 100, 50, 200, 100, 200]);
+        triggerScreenFlash();
+        sendNotification('👁 该休息了！', '看 20 英尺（约 6 米）外的物体，放松 20 秒');
+        flashTitle('🌿 该休息了！');
+        try { window.focus(); } catch (_) {}
+        resetPhase(STATE.REST);
+        showOverlay();
+        overlayTimer.textContent = timeLeft;
+        if (window.electronAPI) {
+          window.electronAPI.sendRoundUpdate(sessionCycles, maxCycles);
+        }
+        tickStart = Date.now();
+        timerId = setInterval(tick, 200);
+      } else {
+        stopAlarm();
+        playRestDone();
+        hideOverlay();
+        if (sessionCycles >= maxCycles) {
+          sendNotification('✅ 护眼完成', `已完成 ${maxCycles} 轮护眼，记得定时放松眼睛 👁`);
+          flashTitle('✅ 护眼完成');
+          clearFlash();
+          resetPhase(STATE.IDLE);
+          updateDisplay();
+          if (window.electronAPI) {
+            window.electronAPI.sendSessionComplete();
+          }
+        } else {
+          sendNotification('✅ 休息结束', '继续工作吧！');
+          flashTitle('👀 继续工作');
+          resetPhase(STATE.WORK);
+          tickStart = Date.now();
+          timerId = setInterval(tick, 200);
+        }
+      }
+    }
+  }
+
+  function startTimer() {
+    if (state === STATE.IDLE) {
+      // reset session counter when starting fresh (e.g. after session-complete state)
+      sessionCycles = 0;
+      resetPhase(STATE.WORK);
+      tickStart = Date.now();
+    } else if (timerId === null) {
+      tickStart = Date.now() - (totalTime - timeLeft) * 1000;
+    } else {
+      return;
+    }
+    clearInterval(timerId);
+    timerId = setInterval(tick, 200);
+    mainBtn.textContent = '暂停';
+    mainBtn.className = state === STATE.REST ? 'btn btn-primary resting' : 'btn btn-primary';
+    clearFlash();
+  }
+
+  function pauseTimer() {
+    if (timerId) {
+      clearInterval(timerId);
+      timerId = null;
+      mainBtn.textContent = '继续';
+      mainBtn.className = 'btn btn-primary';
+    }
+  }
+
+  function resetTimer() {
+    if (timerId) { clearInterval(timerId); timerId = null; }
+    tickStart = null;
+    clearFlash();
+    hideOverlay();
+    sessionCycles = 0;
+    resetPhase(STATE.IDLE);
+    workMinutes = parseInt(workMinInput.value, 10) || 20;
+    restSeconds = parseInt(restSecInput.value, 10) || 20;
+    totalTime = workMinutes * 60;
+    timeLeft = totalTime;
+    ring.setAttribute('class', 'ring-fg work');
+    updateDisplay();
+    saveSettings();
+  }
+
+  function skipRest() {
+    if (state !== STATE.REST) return;
+    stopAlarm();
+    if (timerId) { clearInterval(timerId); timerId = null; }
+    tickStart = null;
+    clearFlash();
+    hideOverlay();
+    todayRestSec += restSeconds - timeLeft;
+    saveStats();
+    playRestDone();
+    resetPhase(STATE.WORK);
+    tickStart = Date.now();
+    timerId = setInterval(tick, 200);
+  }
+
+  // --- event handlers ---
+  mainBtn.addEventListener('click', () => {
+    if (state === STATE.IDLE || timerId === null) {
+      startTimer();
+    } else {
+      pauseTimer();
+    }
+  });
+
+  resetBtn.addEventListener('click', resetTimer);
+  skipBtn.addEventListener('click', skipRest);
+  skipOverlayBtn.addEventListener('click', skipRest);
+
+  themeBtn.addEventListener('click', () => {
+    darkMode = !darkMode;
+    document.documentElement.classList.toggle('dark', darkMode);
+    themeBtn.textContent = darkMode ? '☀️' : '🌙';
+    saveSettings();
+  });
+
+  settingsToggle.addEventListener('click', () => {
+    settingsPanel.classList.toggle('open');
+  });
+
+  workMinInput.addEventListener('change', () => {
+    if (state === STATE.IDLE) {
+      workMinutes = parseInt(workMinInput.value, 10) || 20;
+      totalTime = workMinutes * 60;
+      if (timeLeft > totalTime) timeLeft = totalTime;
+      updateDisplay();
+      saveSettings();
+    }
+  });
+
+  restSecInput.addEventListener('change', () => {
+    restSeconds = parseInt(restSecInput.value, 10) || 20;
+    if (state === STATE.REST) {
+      if (timeLeft > restSeconds) timeLeft = restSeconds;
+      totalTime = restSeconds;
+      updateDisplay();
+    }
+    saveSettings();
+  });
+
+  maxCyclesInput.addEventListener('change', () => {
+    maxCycles = parseInt(maxCyclesInput.value, 10) || 3;
+    saveSettings();
+    if (state === STATE.IDLE) updateDisplay();
+  });
+
+  // --- keyboard shortcuts ---
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === ' ' || e.key === 'Space') {
+      e.preventDefault();
+      mainBtn.click();
+    }
+    if (e.key === 'r' || e.key === 'R') resetBtn.click();
+    if (e.key === 's' || e.key === 'S') skipRest();
+  });
+
+  // --- init ---
+  loadSettings();
+  totalTime = workMinutes * 60;
+  timeLeft = totalTime;
+  updateDisplay();
+  updateStats();
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) clearFlash();
+  });
+})();
+</script>
+</body>
+</html>
